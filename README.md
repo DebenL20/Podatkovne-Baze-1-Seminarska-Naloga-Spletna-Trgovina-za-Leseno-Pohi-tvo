@@ -1,4 +1,4 @@
-# Podatkovne-Baze-1-Seminarska-Naloga-Spletna-Trgovina-za-Leseno-Pohi-tvo
+# Podatkovne-Baze-1-Seminarska-Naloga-Spletna-Trgovina-za-Leseno-Pohistvo
 Podatkovne Baze 1 Seminarska Naloga: Spletna Trgovina za Leseno Pohištvo
 
 Najina seminsrska naloga je spletna trgovina za leseno pohištvo. V sql bi imela pet tabel. Ena bi bila dobavitelji, 
