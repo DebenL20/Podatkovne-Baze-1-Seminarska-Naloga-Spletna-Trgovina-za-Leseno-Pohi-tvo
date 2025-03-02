@@ -173,19 +173,47 @@ def pobrisi_bazo():
         conn.execute('DROP TABLE IF EXISTS stranke')
         conn.execute('DROP TABLE IF EXISTS narocila')
 
+
+import csv
+
+def preberi_csv(ime_datoteke):
+    """
+    Prebere podatke iz CSV datoteke in jih vrne kot seznam slovarjev.
+    """
+    with open(ime_datoteke, newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        return list(reader)
+
+def uvozi_podatke(ime_datoteke):
+    """
+    Prebere podatke iz CSV in jih shrani v bazo.
+    """
+    podatki = preberi_csv(ime_datoteke)
+    
+    with sqlite3.connect(DB_NAME) as conn:
+        for vrstica in podatki:
+            izdelek = Izdelek(None, vrstica["izdelek_ime"], vrstica["izdelek_opis"],
+                              float(vrstica["izdelek_cena"]), int(vrstica["izdelek_zaloga"]))
+            izdelek.shrani()
+
+            dobavitelj = Dobavitelj(None, vrstica["dobavitelj_ime"], vrstica["dobavitelj_naslov"],
+                                    vrstica["dobavitelj_telefon"])
+            dobavitelj.shrani()
+
+            stranka = Stranka(None, vrstica["stranka_ime"], vrstica["stranka_naslov"],
+                              vrstica["stranka_telefon"])
+            stranka.shrani()
+
+            narocilo = Narocilo(None, vrstica["narocilo_datum"], float(vrstica["narocilo_vrednost"]),
+                                vrstica["narocilo_status"], stranka.id)
+            narocilo.shrani()
+
+
 if __name__ == "__main__":
     pobrisi_bazo()
     ustvari_bazo()
     
-    # Dodajanje primera podatkov
-    izdelek = Izdelek(None, "Miza", "Lesena miza", 120.0, 10)
-    izdelek.shrani()
+    # Uvozi podatke iz CSV
+    uvozi_podatke("podatki.csv")
 
-    dobavitelj = Dobavitelj(None, "Lesni Dobavitelj", "Ljubljana", "040123456")
-    dobavitelj.shrani()
-
-    stranka = Stranka(None, "Janez Novak", "Maribor", "031987654")
-    stranka.shrani()
-
-    narocilo = Narocilo(None, "2025-01-11", 120.0, "Oddano", stranka.id)
-    narocilo.shrani()
+    print("Baza je bila uspešno napolnjena s podatki.")

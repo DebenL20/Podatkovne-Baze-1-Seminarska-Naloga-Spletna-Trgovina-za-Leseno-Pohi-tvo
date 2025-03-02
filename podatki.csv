@@ -1,0 +1,6 @@
+izdelek_ime,izdelek_opis,izdelek_cena,izdelek_zaloga,dobavitelj_ime,dobavitelj_naslov,dobavitelj_telefon,stranka_ime,stranka_naslov,stranka_telefon,narocilo_datum,narocilo_vrednost,narocilo_status
+
+Miza,Lesena miza,120.0,10,Lesni Dobavitelj,Ljubljana,040123456,Janez Novak,Maribor,031987654,2025-01-11,120.0,Oddano
+
+Omara,Velika omara,250.0,5,Lesni Dobavitelj,Ljubljana,040123456,Maja Kova�,Koper,041999888,2025-02-15,250.0,Potrjeno
+
