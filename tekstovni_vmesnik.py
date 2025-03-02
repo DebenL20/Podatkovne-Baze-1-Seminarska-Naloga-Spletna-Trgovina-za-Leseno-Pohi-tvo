@@ -73,3 +73,5 @@ def glavni_meni():
         elif izbira == Meni.IZHOD:
             print("Nasvidenje!")
             return
+
+glavni_meni()
