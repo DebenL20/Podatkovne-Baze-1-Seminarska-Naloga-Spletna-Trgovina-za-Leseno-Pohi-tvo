@@ -55,6 +55,16 @@ class Izdelek:
             cursor = conn.execute('SELECT id, ime, opis, cena, zaloga FROM izdelki')
             return [Izdelek(*row) for row in cursor.fetchall()]
 
+    @classmethod
+    def najdi_po_id(cls, izdelek_id):
+        with sqlite3.connect(DB_NAME) as conn:
+            cursor = conn.execute("SELECT id, ime, opis, cena, zaloga FROM izdelki WHERE id = ?", (izdelek_id,))
+            rezultat = cursor.fetchone()
+            if rezultat:
+                return cls(*rezultat)
+            return None
+
+
 @dataclass
 class Dobavitelj:
     id: Optional[int]
@@ -88,6 +98,15 @@ class Dobavitelj:
                     SET ime = ?, naslov = ?, telefonska_stevilka = ?
                     WHERE id = ?
                 ''', (self.ime, self.naslov, self.telefonska_stevilka, self.id))
+    @classmethod
+    def najdi_po_id(cls, dobavitelj_id):
+        with sqlite3.connect(DB_NAME) as conn:
+            cursor = conn.execute("SELECT id, ime, naslov, telefonska_stevilka FROM dobavitelji WHERE id = ?", (dobavitelj_id,))
+            rezultat = cursor.fetchone()
+            if rezultat:
+                return cls(*rezultat)
+            return None
+
 
 @dataclass
 class Stranka:
