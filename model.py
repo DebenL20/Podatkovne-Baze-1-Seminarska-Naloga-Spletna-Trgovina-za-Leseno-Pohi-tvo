@@ -182,23 +182,49 @@ def uvozi_podatke(ime_datoteke):
             
             rezultat = cursor.fetchone()
             if rezultat:
-                dobavitelj_id = rezultat[0]  # Uporabi obstoječi ID
+                dobavitelj_id = rezultat[0]
             else:
-                # Dodaj novega dobavitelja
                 cursor = conn.execute('''
                     INSERT INTO dobavitelji (ime, naslov, telefonska_stevilka)
                     VALUES (?, ?, ?)
                 ''', (vrstica["dobavitelj_ime"], vrstica["dobavitelj_naslov"], vrstica["dobavitelj_telefon"]))
-                dobavitelj_id = cursor.lastrowid  # Pridobi ID novo dodanega dobavitelja
+                dobavitelj_id = cursor.lastrowid
             
-            # Dodaj izdelek s pravilnim dobavitelj_id
-            conn.execute('''
+            # Dodaj izdelek
+            cursor = conn.execute('''
                 INSERT INTO izdelki (ime, opis, cena, zaloga, dobavitelj_id)
                 VALUES (?, ?, ?, ?, ?)
             ''', (vrstica["izdelek_ime"], vrstica["izdelek_opis"], float(vrstica["izdelek_cena"]),
                   int(vrstica["izdelek_zaloga"]), dobavitelj_id))
+            izdelek_id = cursor.lastrowid
+
+            # Preveri, ali stranka že obstaja
+            cursor = conn.execute('''
+                SELECT id FROM stranke WHERE ime = ? AND naslov = ? AND telefonska_stevilka = ?
+            ''', (vrstica["stranka_ime"], vrstica["stranka_naslov"], vrstica["stranka_telefon"]))
+            
+            rezultat = cursor.fetchone()
+            if rezultat:
+                stranka_id = rezultat[0]
+            else:
+                cursor = conn.execute('''
+                    INSERT INTO stranke (ime, naslov, telefonska_stevilka)
+                    VALUES (?, ?, ?)
+                ''', (vrstica["stranka_ime"], vrstica["stranka_naslov"], vrstica["stranka_telefon"]))
+                stranka_id = cursor.lastrowid
+
+            # Dodaj naročilo, če obstaja
+            if vrstica["narocilo_datum"]:
+                conn.execute('''
+                    INSERT INTO narocila (datum, vrednost, status, stranka_id)
+                    VALUES (?, ?, ?, ?)
+                ''', (vrstica["narocilo_datum"], float(vrstica["narocilo_vrednost"]),
+                      vrstica["narocilo_status"], stranka_id))
 
         conn.commit()
+
+
+
 
 
 
