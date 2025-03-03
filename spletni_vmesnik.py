@@ -35,7 +35,7 @@ def prikazi_izdelke():
             <div>
                 % for izdelek in izdelki:
                     <div style="display: inline-block; text-align: center; margin: 10px;">
-                        <a href="/dobavitelj/{{izdelek.id}}">
+                        <a href="/dobavitelj/{{izdelek.dobavitelj_id}}">
                             <img src="/slike_izdelkov/{{izdelek.ime.lower().replace(' ', '_')}}.png" alt="{{izdelek.ime}}" width="150">
                         </a>
                         <p>{{ izdelek.ime }}</p>
@@ -48,10 +48,12 @@ def prikazi_izdelke():
         </html>
     """, izdelki=izdelki)
 
-@app.route('/dobavitelj/<izdelek_id>')
-def prikazi_dobavitelja(izdelek_id):
-    izdelek = Izdelek.najdi_po_id(izdelek_id)
-    dobavitelj = Dobavitelj.najdi_po_id(izdelek.id)
+@app.route('/dobavitelj/<dobavitelj_id>')
+def prikazi_dobavitelja(dobavitelj_id):
+    dobavitelj = Dobavitelj.najdi_po_id(dobavitelj_id)
+    if not dobavitelj:
+        return "<h1>Napaka: Dobavitelj ne obstaja</h1>"
+
     return template("""
         <!DOCTYPE html>
         <html lang="sl">
@@ -60,14 +62,14 @@ def prikazi_dobavitelja(izdelek_id):
             <title>Dobavitelj</title>
         </head>
         <body>
-            <h1>Dobavitelj izdelka {{izdelek.ime}}</h1>
+            <h1>Dobavitelj</h1>
             <p>Ime: {{dobavitelj.ime}}</p>
             <p>Naslov: {{dobavitelj.naslov}}</p>
             <p>Telefon: {{dobavitelj.telefonska_stevilka}}</p>
             <a href="/izdelki"><button>Nazaj na izdelke</button></a>
         </body>
         </html>
-    """, izdelek=izdelek, dobavitelj=dobavitelj)
+    """, dobavitelj=dobavitelj)
 
 @app.route('/slike_izdelkov/<filename>')
 def serviraj_sliko(filename):

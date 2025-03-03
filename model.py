@@ -11,15 +11,7 @@ class Izdelek:
     opis: str
     cena: float
     zaloga: int
-
-    @staticmethod
-    def vsi_izdelki():
-        """
-        Vrne seznam vseh izdelkov v bazi.
-        """
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.execute('SELECT id, ime, opis, cena, zaloga FROM izdelki')
-            return [Izdelek(*row) for row in cursor.fetchall()]
+    dobavitelj_id: int  # NOV STOLPEC
 
     @staticmethod
     def ustvari_tabelo():
@@ -30,40 +22,26 @@ class Izdelek:
                     ime TEXT NOT NULL,
                     opis TEXT,
                     cena REAL NOT NULL,
-                    zaloga INTEGER NOT NULL
+                    zaloga INTEGER NOT NULL,
+                    dobavitelj_id INTEGER NOT NULL,
+                    FOREIGN KEY(dobavitelj_id) REFERENCES dobavitelji(id) ON DELETE CASCADE
                 )
             ''')
 
-    def shrani(self):
+    @classmethod
+    def vsi_izdelki(cls):
         with sqlite3.connect(DB_NAME) as conn:
-            if self.id is None:
-                cursor = conn.execute('''
-                    INSERT INTO izdelki (ime, opis, cena, zaloga)
-                    VALUES (?, ?, ?, ?)
-                ''', (self.ime, self.opis, self.cena, self.zaloga))
-                self.id = cursor.lastrowid
-            else:
-                conn.execute('''
-                    UPDATE izdelki
-                    SET ime = ?, opis = ?, cena = ?, zaloga = ?
-                    WHERE id = ?
-                ''', (self.ime, self.opis, self.cena, self.zaloga, self.id))
-
-    @staticmethod
-    def vsi():
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.execute('SELECT id, ime, opis, cena, zaloga FROM izdelki')
-            return [Izdelek(*row) for row in cursor.fetchall()]
+            cursor = conn.execute('SELECT id, ime, opis, cena, zaloga, dobavitelj_id FROM izdelki')
+            return [cls(*row) for row in cursor.fetchall()]
 
     @classmethod
     def najdi_po_id(cls, izdelek_id):
         with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.execute("SELECT id, ime, opis, cena, zaloga FROM izdelki WHERE id = ?", (izdelek_id,))
+            cursor = conn.execute("SELECT id, ime, opis, cena, zaloga, dobavitelj_id FROM izdelki WHERE id = ?", (izdelek_id,))
             rezultat = cursor.fetchone()
             if rezultat:
                 return cls(*rezultat)
             return None
-
 
 @dataclass
 class Dobavitelj:
@@ -84,20 +62,6 @@ class Dobavitelj:
                 )
             ''')
 
-    def shrani(self):
-        with sqlite3.connect(DB_NAME) as conn:
-            if self.id is None:
-                cursor = conn.execute('''
-                    INSERT INTO dobavitelji (ime, naslov, telefonska_stevilka)
-                    VALUES (?, ?, ?)
-                ''', (self.ime, self.naslov, self.telefonska_stevilka))
-                self.id = cursor.lastrowid
-            else:
-                conn.execute('''
-                    UPDATE dobavitelji
-                    SET ime = ?, naslov = ?, telefonska_stevilka = ?
-                    WHERE id = ?
-                ''', (self.ime, self.naslov, self.telefonska_stevilka, self.id))
     @classmethod
     def najdi_po_id(cls, dobavitelj_id):
         with sqlite3.connect(DB_NAME) as conn:
@@ -211,21 +175,31 @@ def uvozi_podatke(ime_datoteke):
     
     with sqlite3.connect(DB_NAME) as conn:
         for vrstica in podatki:
-            izdelek = Izdelek(None, vrstica["izdelek_ime"], vrstica["izdelek_opis"],
-                              float(vrstica["izdelek_cena"]), int(vrstica["izdelek_zaloga"]))
-            izdelek.shrani()
+            # Preveri, ali dobavitelj že obstaja
+            cursor = conn.execute('''
+                SELECT id FROM dobavitelji WHERE ime = ? AND naslov = ? AND telefonska_stevilka = ?
+            ''', (vrstica["dobavitelj_ime"], vrstica["dobavitelj_naslov"], vrstica["dobavitelj_telefon"]))
+            
+            rezultat = cursor.fetchone()
+            if rezultat:
+                dobavitelj_id = rezultat[0]  # Uporabi obstoječi ID
+            else:
+                # Dodaj novega dobavitelja
+                cursor = conn.execute('''
+                    INSERT INTO dobavitelji (ime, naslov, telefonska_stevilka)
+                    VALUES (?, ?, ?)
+                ''', (vrstica["dobavitelj_ime"], vrstica["dobavitelj_naslov"], vrstica["dobavitelj_telefon"]))
+                dobavitelj_id = cursor.lastrowid  # Pridobi ID novo dodanega dobavitelja
+            
+            # Dodaj izdelek s pravilnim dobavitelj_id
+            conn.execute('''
+                INSERT INTO izdelki (ime, opis, cena, zaloga, dobavitelj_id)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (vrstica["izdelek_ime"], vrstica["izdelek_opis"], float(vrstica["izdelek_cena"]),
+                  int(vrstica["izdelek_zaloga"]), dobavitelj_id))
 
-            dobavitelj = Dobavitelj(None, vrstica["dobavitelj_ime"], vrstica["dobavitelj_naslov"],
-                                    vrstica["dobavitelj_telefon"])
-            dobavitelj.shrani()
+        conn.commit()
 
-            stranka = Stranka(None, vrstica["stranka_ime"], vrstica["stranka_naslov"],
-                              vrstica["stranka_telefon"])
-            stranka.shrani()
-
-            narocilo = Narocilo(None, vrstica["narocilo_datum"], float(vrstica["narocilo_vrednost"]),
-                                vrstica["narocilo_status"], stranka.id)
-            narocilo.shrani()
 
 
 if __name__ == "__main__":
