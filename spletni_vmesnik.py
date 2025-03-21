@@ -5,7 +5,7 @@ import csv
 
 app = Bottle()
 
-kosarica = []  # Seznam za shranjevanje izdelkov v košarici
+kosarice = {}  # Shramba za košarice uporabnikov v pomnilniku
 
 @app.route('/')
 def zacetna_stran():
@@ -103,15 +103,97 @@ def prikazi_dobavitelja(dobavitelj_id, izdelek_id):
     """, dobavitelj=dobavitelj, izdelek=izdelek)
 
 
+# Funkcija za shranjevanje košarice v CSV
+def shrani_kosarico(uporabnisko_ime):
+    uporabniki = {}
+    try:
+        with open(CSV_UPORABNIKI, mode='r', newline='', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            for vrstica in reader:
+                if len(vrstica) > 1:
+                    uporabniki[vrstica[0]] = [vrstica[1]] + vrstica[2:]  # Geslo + izdelki
+    except FileNotFoundError:
+        pass
+
+    if uporabnisko_ime in uporabniki:
+        geslo = uporabniki[uporabnisko_ime][0]  # Ohrani geslo
+    else:
+        geslo = ""
+
+    # Preprečimo gnezdenje seznamov
+    izdelki = [str(izdelek.id) for izdelek in kosarice.get(uporabnisko_ime, [])]
+    uporabniki[uporabnisko_ime] = [geslo] + izdelki
+
+    with open(CSV_UPORABNIKI, mode='w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        for uporabnik, podatki in uporabniki.items():
+            writer.writerow([uporabnik] + podatki)
+
+
+def nalozi_kosarico(uporabnisko_ime):
+    kosarice[uporabnisko_ime] = []
+    try:
+        with open(CSV_UPORABNIKI, mode='r', newline='', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            for vrstica in reader:
+                if len(vrstica) > 2 and vrstica[0] == uporabnisko_ime:
+                    izdelek_ids = vrstica[2:]  # ID-ji izdelkov
+                    izdelki = [Izdelek.najdi_po_id(int(id)) for id in izdelek_ids if id.isdigit()]
+                    kosarice[uporabnisko_ime] = [izdelek for izdelek in izdelki if izdelek is not None]  # Filtriramo None vrednosti
+    except FileNotFoundError:
+        pass
+
+
+
 @app.route('/dodaj_v_kosarico/<izdelek_id>', method='POST')
 def dodaj_v_kosarico(izdelek_id):
+    uporabnik = request.get_cookie("trenutni_uporabnik")
+    if not uporabnik:
+        return template("""
+            <!DOCTYPE html>
+            <html lang="sl">
+            <head>
+                <meta charset="UTF-8">
+                <title>Prijava potrebna</title>
+            </head>
+            <body>
+                <h1>Prosim prijavite se v račun, da lahko dodajate izdelke v košarico.</h1>
+                <a href="/prijava"><button>Prijava</button></a>
+                <a href="/izdelki"><button>Nazaj na izdelke</button></a>
+            </body>
+            </html>
+        """)
+    
+    if uporabnik not in kosarice:
+        kosarice[uporabnik] = []
+    
     izdelek = Izdelek.najdi_po_id(izdelek_id)
     if izdelek:
-        kosarica.append(izdelek)
+        kosarice[uporabnik].append(izdelek)
+        shrani_kosarico(uporabnik)
     redirect('/kosarica')
+
 
 @app.route('/kosarica')
 def prikazi_kosarico():
+    uporabnik = request.get_cookie("trenutni_uporabnik")
+    if not uporabnik:
+        return template("""
+            <!DOCTYPE html>
+            <html lang="sl">
+            <head>
+                <meta charset="UTF-8">
+                <title>Košarica</title>
+            </head>
+            <body>
+                <h1>Prosim prijavite se, da lahko vidite svojo košarico.</h1>
+                <a href="/prijava"><button>Prijava</button></a>
+                <a href="/izdelki"><button>Nazaj na izdelke</button></a>
+            </body>
+            </html>
+        """)
+    
+    izdelki = kosarice.get(uporabnik, [])
     return template("""
         <!DOCTYPE html>
         <html lang="sl">
@@ -122,14 +204,14 @@ def prikazi_kosarico():
         <body>
             <h1>Košarica</h1>
             <ul>
-                % for izdelek in kosarica:
+                % for izdelek in izdelki:
                     <li>{{ izdelek.ime }} - {{ izdelek.cena }} €</li>
                 % end
             </ul>
             <a href="/izdelki"><button>Nazaj na izdelke</button></a>
         </body>
         </html>
-    """, kosarica=kosarica)
+    """, izdelki=izdelki)
 
 @app.route('/slike_izdelkov/<filename>')
 def serviraj_sliko(filename):
@@ -150,8 +232,8 @@ def preberi_uporabnike():
         with open(CSV_UPORABNIKI, mode='r', newline='', encoding='utf-8') as f:
             reader = csv.reader(f)
             for vrstica in reader:
-                if len(vrstica) == 2:
-                    uporabniki[vrstica[0]] = vrstica[1]
+                if len(vrstica) > 1:
+                    uporabniki[vrstica[0]] = vrstica[1]  # Shranimo samo geslo
     except FileNotFoundError:
         pass
     return uporabniki
@@ -165,6 +247,7 @@ def prijava():
         uporabniki = preberi_uporabnike()
         if uporabnisko_ime in uporabniki and uporabniki[uporabnisko_ime] == geslo:
             response.set_cookie("trenutni_uporabnik", uporabnisko_ime, path='/')
+            nalozi_kosarico(uporabnisko_ime)
             redirect('/izdelki')
         else:
             return "<h1>Nepravilno uporabniško ime ali geslo!</h1><a href='/prijava'>Poskusi znova</a>"
@@ -236,9 +319,11 @@ def registracija():
 
 @app.route('/odjava')
 def odjava():
+    uporabnik = request.get_cookie("trenutni_uporabnik")
+    if uporabnik:
+        shrani_kosarico(uporabnik)
     response.delete_cookie("trenutni_uporabnik")
     redirect('/izdelki')
-
 
 
 if __name__ == "__main__":
