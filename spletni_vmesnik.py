@@ -1,5 +1,5 @@
 from bottle import Bottle, run, template, static_file, request, redirect, response
-from model import Izdelek, Dobavitelj
+from model import Izdelek, Dobavitelj, Stranka
 import os
 import csv
 
@@ -280,17 +280,20 @@ def registracija():
         geslo = request.forms.get('geslo')
         potrdi_geslo = request.forms.get('potrdi_geslo')
 
-        # Preveri, ali gesli ustrezata
         if geslo != potrdi_geslo:
             return "<h1>Napaka: Gesli se ne ujemata!</h1><a href='/registracija'>Poskusi znova</a>"
 
-        # Preveri, ali uporabnik že obstaja
-        uporabniki = preberi_uporabnike()
-        if uporabnisko_ime in uporabniki:
+        # Preveri, ali uporabnik že obstaja v bazi
+        if Stranka.najdi_po_imenu(uporabnisko_ime):
             return "<h1>Napaka: Uporabniško ime že obstaja!</h1><a href='/registracija'>Poskusi znova</a>"
 
-        # Shrani novega uporabnika
+        # Shrani v bazo
+        stranka = Stranka(None, uporabnisko_ime, geslo)
+        stranka.shrani()
+
+        # Shrani tudi v CSV
         shrani_uporabnika(uporabnisko_ime, geslo)
+
         return "<h1>Uspešna registracija!</h1><a href='/prijava'>Prijava</a>"
 
     return template("""

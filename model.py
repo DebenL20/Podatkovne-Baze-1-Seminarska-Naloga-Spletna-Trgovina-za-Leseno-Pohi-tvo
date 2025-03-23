@@ -76,8 +76,7 @@ class Dobavitelj:
 class Stranka:
     id: Optional[int]
     ime: str
-    naslov: str
-    telefonska_stevilka: str
+    geslo: str
 
     @staticmethod
     def ustvari_tabelo():
@@ -85,9 +84,8 @@ class Stranka:
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS stranke (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    ime TEXT NOT NULL,
-                    naslov TEXT NOT NULL,
-                    telefonska_stevilka TEXT NOT NULL
+                    ime TEXT UNIQUE NOT NULL,
+                    geslo TEXT NOT NULL
                 )
             ''')
 
@@ -95,16 +93,27 @@ class Stranka:
         with sqlite3.connect(DB_NAME) as conn:
             if self.id is None:
                 cursor = conn.execute('''
-                    INSERT INTO stranke (ime, naslov, telefonska_stevilka)
-                    VALUES (?, ?, ?)
-                ''', (self.ime, self.naslov, self.telefonska_stevilka))
+                    INSERT INTO stranke (ime, geslo)
+                    VALUES (?, ?)
+                ''', (self.ime, self.geslo))
                 self.id = cursor.lastrowid
             else:
                 conn.execute('''
                     UPDATE stranke
-                    SET ime = ?, naslov = ?, telefonska_stevilka = ?
+                    SET ime = ?, geslo = ?
                     WHERE id = ?
-                ''', (self.ime, self.naslov, self.telefonska_stevilka, self.id))
+                ''', (self.ime, self.geslo, self.id))
+
+    @classmethod
+    def najdi_po_imenu(cls, ime):
+        with sqlite3.connect(DB_NAME) as conn:
+            cursor = conn.execute("SELECT id, ime, geslo FROM stranke WHERE ime = ?", (ime,))
+            rezultat = cursor.fetchone()
+            if rezultat:
+                return cls(*rezultat)
+            return None
+
+
 
 @dataclass
 class Narocilo:
@@ -198,28 +207,7 @@ def uvozi_podatke(ime_datoteke):
                   int(vrstica["izdelek_zaloga"]), dobavitelj_id))
             izdelek_id = cursor.lastrowid
 
-            # Preveri, ali stranka že obstaja
-            cursor = conn.execute('''
-                SELECT id FROM stranke WHERE ime = ? AND naslov = ? AND telefonska_stevilka = ?
-            ''', (vrstica["stranka_ime"], vrstica["stranka_naslov"], vrstica["stranka_telefon"]))
-            
-            rezultat = cursor.fetchone()
-            if rezultat:
-                stranka_id = rezultat[0]
-            else:
-                cursor = conn.execute('''
-                    INSERT INTO stranke (ime, naslov, telefonska_stevilka)
-                    VALUES (?, ?, ?)
-                ''', (vrstica["stranka_ime"], vrstica["stranka_naslov"], vrstica["stranka_telefon"]))
-                stranka_id = cursor.lastrowid
 
-            # Dodaj naročilo, če obstaja
-            if vrstica["narocilo_datum"]:
-                conn.execute('''
-                    INSERT INTO narocila (datum, vrednost, status, stranka_id)
-                    VALUES (?, ?, ?, ?)
-                ''', (vrstica["narocilo_datum"], float(vrstica["narocilo_vrednost"]),
-                      vrstica["narocilo_status"], stranka_id))
 
         conn.commit()
 
