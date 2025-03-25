@@ -174,6 +174,7 @@ def dodaj_v_kosarico(izdelek_id):
     redirect('/kosarica')
 
 
+
 @app.route('/kosarica')
 def prikazi_kosarico():
     uporabnik = request.get_cookie("trenutni_uporabnik")
@@ -262,7 +263,7 @@ def prijava():
             <h1>Prijava</h1>
             <form method="POST">
                 <label>Uporabniško ime:</label>
-                <input type="text" name="uporabnisko_ime" required><br>
+                <input type="text" name="uporabnisko_ime" autocomplete="off"><br>
                 <label>Geslo:</label>
                 <input type="password" name="geslo" required><br>
                 <button type="submit">Prijava</button>
@@ -307,7 +308,7 @@ def registracija():
             <h1>Registracija</h1>
             <form method="POST">
                 <label>Uporabniško ime:</label>
-                <input type="text" name="uporabnisko_ime" required><br>
+                <input type="text" name="uporabnisko_ime" required autocomplete="off"><br>
                 <label>Geslo:</label>
                 <input type="password" name="geslo" required><br>
                 <label>Ponovi geslo:</label>
