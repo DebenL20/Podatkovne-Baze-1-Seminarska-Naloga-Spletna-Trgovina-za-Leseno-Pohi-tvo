@@ -175,6 +175,13 @@ def dodaj_v_kosarico(izdelek_id):
 
 
 
+@app.route('/')
+def index():
+    return template("""
+        <h1>Dobrodošli</h1>
+        <a href="/kosarica"><button>Prikaži košarico</button></a>
+    """)
+
 @app.route('/kosarica')
 def prikazi_kosarico():
     uporabnik = request.get_cookie("trenutni_uporabnik")
@@ -193,8 +200,10 @@ def prikazi_kosarico():
             </body>
             </html>
         """)
-    
+
     izdelki = kosarice.get(uporabnik, [])
+    skupna_cena = sum(izdelek.cena for izdelek in izdelki)
+
     return template("""
         <!DOCTYPE html>
         <html lang="sl">
@@ -205,14 +214,27 @@ def prikazi_kosarico():
         <body>
             <h1>Košarica</h1>
             <ul>
-                % for izdelek in izdelki:
-                    <li>{{ izdelek.ime }} - {{ izdelek.cena }} €</li>
+                % for i, izdelek in enumerate(izdelki):
+                    <li>{{ izdelek.ime }} - {{ izdelek.cena }} € 
+                        <form action="/izbrisi/{{i}}" method="post" style="display:inline;">
+                            <button type="submit">Izbriši</button>
+                        </form>
+                    </li>
                 % end
             </ul>
+            <h2>Skupna cena: {{ skupna_cena }} €</h2>
             <a href="/izdelki"><button>Nazaj na izdelke</button></a>
         </body>
         </html>
-    """, izdelki=izdelki)
+    """, izdelki=izdelki, skupna_cena=skupna_cena)
+
+@app.route('/izbrisi/<index:int>', method="POST")
+def izbrisi_izdelek(index):
+    uporabnik = request.get_cookie("trenutni_uporabnik")
+    if uporabnik and uporabnik in kosarice and 0 <= index < len(kosarice[uporabnik]):
+        del kosarice[uporabnik][index]
+    return redirect('/kosarica')
+
 
 @app.route('/slike_izdelkov/<filename>')
 def serviraj_sliko(filename):
