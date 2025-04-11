@@ -6,6 +6,7 @@ import csv
 app = Bottle()
 
 kosarice = {}  # Shramba za košarice uporabnikov v pomnilniku
+CSV_UPORABNIKI = "uporabniki.csv"
 
 @app.route('/')
 def zacetna_stran():
@@ -15,10 +16,15 @@ def zacetna_stran():
         <head>
             <meta charset="UTF-8">
             <title>Pohištvo</title>
+            <link rel="stylesheet" href="/static/style.css">
         </head>
         <body>
-            <h1>Dobrodošli v spletni trgovini s pohištvom</h1>
-            <a href="/izdelki"><button>Pregled izdelkov</button></a>
+            <header>
+                <h1>Dobrodošli v spletni trgovini s pohištvom</h1>
+                <nav>
+                    <a href="/izdelki">Pregled izdelkov</a>
+                </nav>
+            </header>
         </body>
         </html>
     """)
@@ -33,44 +39,42 @@ def prikazi_izdelke():
         <head>
             <meta charset="UTF-8">
             <title>Izdelki</title>
-            <style>
-                .top-right {
-                    position: absolute;
-                    top: 10px;
-                    right: 10px;
-                }
-                .top-right a {
-                    margin-left: 10px;
-                }
-            </style>
+            <link rel="stylesheet" href="/static/style.css">
         </head>
         <body>
-            <h1>Seznam izdelkov</h1>
-            
-            <div class="top-right">
-                <a href="/kosarica"><button>Košarica</button></a>
-                % if uporabnik:
-                    <a href="/odjava"><button>Odjava ({{uporabnik}})</button></a>
-                % else:
-                    <a href="/prijava"><button>Prijava</button></a>
-                % end
-            </div>
-            
-            <div>
+            <header>
+                <h1>Seznam izdelkov</h1>
+                <div class="top-nav">
+                    <a href="/kosarica">🛒 Košarica</a>
+                    % if uporabnik:
+                        <a href="/odjava">Odjava ({{uporabnik}})</a>
+                    % else:
+                        <a href="/prijava">Prijava</a>
+                    % end
+                </div>
+            </header>
+            <main class="product-grid">
                 % for izdelek in izdelki:
-                    <div style="display: inline-block; text-align: center; margin: 10px;">
+                    <div class="product">
                         <a href="/dobavitelj/{{izdelek.dobavitelj_id}}/{{izdelek.id}}">
-                            <img src="/slike_izdelkov/{{izdelek.ime.lower().replace(' ', '_')}}.png" alt="{{izdelek.ime}}" width="150">
+                            <img class="product-img" src="/slike_izdelkov/{{izdelek.ime.lower().replace(' ', '_')}}.png" alt="{{izdelek.ime}}">
                         </a>
-                        <p>{{ izdelek.ime }}</p>
+                        <h2>{{ izdelek.ime }}</h2>
                         <p>{{ izdelek.cena }} €</p>
                     </div>
                 % end
-            </div>
-            <a href="/"><button>Na začetno stran</button></a>
+            </main>
+            <footer>
+                <a href="/">Na začetno stran</a>
+            </footer>
         </body>
         </html>
     """, izdelki=izdelki, uporabnik=uporabnik)
+
+# Strezba statične CSS datoteke
+@app.route('/static/<filename>')
+def serve_static(filename):
+    return static_file(filename, root=os.path.join(os.getcwd(), 'static'))
 
 
 
@@ -78,26 +82,32 @@ def prikazi_izdelke():
 def prikazi_dobavitelja(dobavitelj_id, izdelek_id):
     dobavitelj = Dobavitelj.najdi_po_id(dobavitelj_id)
     izdelek = Izdelek.najdi_po_id(izdelek_id)
-    
-    if not dobavitelj or not izdelek:
-        return "<h1>Napaka: Dobavitelj ali izdelek ne obstajata</h1>"
-
     return template("""
         <!DOCTYPE html>
         <html lang="sl">
         <head>
             <meta charset="UTF-8">
             <title>Dobavitelj</title>
+            <link rel="stylesheet" href="/static/style.css">
         </head>
         <body>
-            <h1>Dobavitelj</h1>
-            <p>Ime: {{dobavitelj.ime}}</p>
-            <p>Naslov: {{dobavitelj.naslov}}</p>
-            <p>Telefon: {{dobavitelj.telefonska_stevilka}}</p>
-            <form action="/dodaj_v_kosarico/{{izdelek.id}}" method="post">
-                <button type="submit">Dodaj v košarico</button>
-            </form>
-            <a href="/izdelki"><button>Nazaj na izdelke</button></a>
+            <header><h1>Dobavitelj izdelka</h1></header>
+            <main class="detail-view">
+                <h2>{{ izdelek.ime }}</h2>
+                <p><strong>Opis:</strong> {{ izdelek.opis }}</p>
+                <p><strong>Cena:</strong> {{ izdelek.cena }} €</p>
+                <hr>
+                <h3>Dobavitelj</h3>
+                <p><strong>Ime:</strong> {{ dobavitelj.ime }}</p>
+                <p><strong>Naslov:</strong> {{ dobavitelj.naslov }}</p>
+                <p><strong>Telefon:</strong> {{ dobavitelj.telefonska_stevilka }}</p>
+                <form action="/dodaj_v_kosarico/{{ izdelek.id }}" method="post">
+                    <button type="submit">Dodaj v košarico</button>
+                </form>
+            </main>
+            <footer>
+                <a href="/izdelki">Nazaj na izdelke</a>
+            </footer>
         </body>
         </html>
     """, dobavitelj=dobavitelj, izdelek=izdelek)
@@ -137,9 +147,9 @@ def nalozi_kosarico(uporabnisko_ime):
             reader = csv.reader(f)
             for vrstica in reader:
                 if len(vrstica) > 2 and vrstica[0] == uporabnisko_ime:
-                    izdelek_ids = vrstica[2:]  # ID-ji izdelkov
+                    izdelek_ids = vrstica[2:]  # ID-ji izdelkov v kosarici
                     izdelki = [Izdelek.najdi_po_id(int(id)) for id in izdelek_ids if id.isdigit()]
-                    kosarice[uporabnisko_ime] = [izdelek for izdelek in izdelki if izdelek is not None]  # Filtriramo None vrednosti
+                    kosarice[uporabnisko_ime] = [izdelek for izdelek in izdelki if izdelek is not None]
     except FileNotFoundError:
         pass
 
@@ -175,12 +185,7 @@ def dodaj_v_kosarico(izdelek_id):
 
 
 
-@app.route('/')
-def index():
-    return template("""
-        <h1>Dobrodošli</h1>
-        <a href="/kosarica"><button>Prikaži košarico</button></a>
-    """)
+
 
 @app.route('/kosarica')
 def prikazi_kosarico():
@@ -192,6 +197,7 @@ def prikazi_kosarico():
             <head>
                 <meta charset="UTF-8">
                 <title>Košarica</title>
+                <link rel="stylesheet" href="/static/style.css">
             </head>
             <body>
                 <h1>Prosim prijavite se, da lahko vidite svojo košarico.</h1>
@@ -200,6 +206,9 @@ def prikazi_kosarico():
             </body>
             </html>
         """)
+
+    if uporabnik not in kosarice:
+        nalozi_kosarico(uporabnik)
 
     izdelki = kosarice.get(uporabnik, [])
     skupna_cena = sum(izdelek.cena for izdelek in izdelki)
@@ -210,20 +219,28 @@ def prikazi_kosarico():
         <head>
             <meta charset="UTF-8">
             <title>Košarica</title>
+            <link rel="stylesheet" href="/static/style.css">
         </head>
         <body>
-            <h1>Košarica</h1>
-            <ul>
-                % for i, izdelek in enumerate(izdelki):
-                    <li>{{ izdelek.ime }} - {{ izdelek.cena }} € 
-                        <form action="/izbrisi/{{i}}" method="post" style="display:inline;">
-                            <button type="submit">Izbriši</button>
-                        </form>
-                    </li>
+            <header><h1>Vaša košarica</h1></header>
+            <main class="cart-view">
+                % if izdelki:
+                    <ul>
+                        % for i, izdelek in enumerate(izdelki):
+                            <li>
+                                {{ izdelek.ime }} - {{ izdelek.cena }} €
+                                <form action="/izbrisi/{{i}}" method="post" style="display:inline;">
+                                    <button type="submit">Odstrani</button>
+                                </form>
+                            </li>
+                        % end
+                    </ul>
+                    <p><strong>Skupna cena:</strong> {{ skupna_cena }} €</p>
+                % else:
+                    <p>Košarica je prazna.</p>
                 % end
-            </ul>
-            <h2>Skupna cena: {{ skupna_cena }} €</h2>
-            <a href="/izdelki"><button>Nazaj na izdelke</button></a>
+                <a href="/izdelki"><button>Nazaj na izdelke</button></a>
+            </main>
         </body>
         </html>
     """, izdelki=izdelki, skupna_cena=skupna_cena)
@@ -233,6 +250,7 @@ def izbrisi_izdelek(index):
     uporabnik = request.get_cookie("trenutni_uporabnik")
     if uporabnik and uporabnik in kosarice and 0 <= index < len(kosarice[uporabnik]):
         del kosarice[uporabnik][index]
+        shrani_kosarico(uporabnik)
     return redirect('/kosarica')
 
 
@@ -280,17 +298,20 @@ def prijava():
         <head>
             <meta charset="UTF-8">
             <title>Prijava</title>
+            <link rel="stylesheet" href="/static/style.css">
         </head>
         <body>
-            <h1>Prijava</h1>
-            <form method="POST">
-                <label>Uporabniško ime:</label>
-                <input type="text" name="uporabnisko_ime" autocomplete="off"><br>
-                <label>Geslo:</label>
-                <input type="password" name="geslo" required><br>
-                <button type="submit">Prijava</button>
-            </form>
-            <a href="/registracija"><button>Registracija</button></a>
+            <header><h1>Prijava</h1></header>
+            <main class="form-container">
+                <form method="POST">
+                    <label>Uporabniško ime:</label>
+                    <input type="text" name="uporabnisko_ime" required><br>
+                    <label>Geslo:</label>
+                    <input type="password" name="geslo" required><br>
+                    <button type="submit">Prijava</button>
+                </form>
+                <a href="/registracija">Registracija</a>
+            </main>
         </body>
         </html>
     """)
@@ -325,19 +346,22 @@ def registracija():
         <head>
             <meta charset="UTF-8">
             <title>Registracija</title>
+            <link rel="stylesheet" href="/static/style.css">
         </head>
         <body>
-            <h1>Registracija</h1>
-            <form method="POST">
-                <label>Uporabniško ime:</label>
-                <input type="text" name="uporabnisko_ime" required autocomplete="off"><br>
-                <label>Geslo:</label>
-                <input type="password" name="geslo" required><br>
-                <label>Ponovi geslo:</label>
-                <input type="password" name="potrdi_geslo" required><br>
-                <button type="submit">Registracija</button>
-            </form>
-            <a href="/prijava"><button>Prijava</button></a>
+            <header><h1>Registracija</h1></header>
+            <main class="form-container">
+                <form method="POST">
+                    <label>Uporabniško ime:</label>
+                    <input type="text" name="uporabnisko_ime" required><br>
+                    <label>Geslo:</label>
+                    <input type="password" name="geslo" required><br>
+                    <label>Ponovi geslo:</label>
+                    <input type="password" name="potrdi_geslo" required><br>
+                    <button type="submit">Registracija</button>
+                </form>
+                <a href="/prijava">Nazaj na prijavo</a>
+            </main>
         </body>
         </html>
     """)
