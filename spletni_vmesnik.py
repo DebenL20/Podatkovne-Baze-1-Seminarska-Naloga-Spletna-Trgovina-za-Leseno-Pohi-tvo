@@ -157,8 +157,8 @@ def nalozi_kosarico(uporabnisko_ime):
 
 @app.route('/dodaj_v_kosarico/<izdelek_id>', method='POST')
 def dodaj_v_kosarico(izdelek_id):
-    uporabnik = request.get_cookie("trenutni_uporabnik")
-    if not uporabnik:
+    uporabnik_ime = request.get_cookie("trenutni_uporabnik")
+    if not uporabnik_ime:
         return template("""
             <!DOCTYPE html>
             <html lang="sl">
@@ -173,24 +173,25 @@ def dodaj_v_kosarico(izdelek_id):
             </body>
             </html>
         """)
-    
-    if uporabnik not in kosarice:
-        kosarice[uporabnik] = []
-    
+
+    stranka = Stranka.najdi_po_imenu(uporabnik_ime)
+    if not stranka:
+        return redirect('/prijava')
+
     izdelek = Izdelek.najdi_po_id(izdelek_id)
     if izdelek:
-        kosarice[uporabnik].append(izdelek)
-        shrani_kosarico(uporabnik)
-    redirect('/kosarica')
+        stranka.dodaj_v_kosarico(izdelek.id)
+        stranka.posodobi_csv()  # <-- tukaj shrani spremembo v CSV
 
+    return redirect('/kosarica')
 
 
 
 
 @app.route('/kosarica')
 def prikazi_kosarico():
-    uporabnik = request.get_cookie("trenutni_uporabnik")
-    if not uporabnik:
+    uporabnik_ime = request.get_cookie("trenutni_uporabnik")
+    if not uporabnik_ime:
         return template("""
             <!DOCTYPE html>
             <html lang="sl">
@@ -207,10 +208,11 @@ def prikazi_kosarico():
             </html>
         """)
 
-    if uporabnik not in kosarice:
-        nalozi_kosarico(uporabnik)
+    stranka = Stranka.najdi_po_imenu(uporabnik_ime)
+    if not stranka:
+        return redirect('/prijava')
 
-    izdelki = kosarice.get(uporabnik, [])
+    izdelki = stranka.pridobi_kosarico()
     skupna_cena = sum(izdelek.cena for izdelek in izdelki)
 
     return template("""
@@ -247,10 +249,12 @@ def prikazi_kosarico():
 
 @app.route('/izbrisi/<index:int>', method="POST")
 def izbrisi_izdelek(index):
-    uporabnik = request.get_cookie("trenutni_uporabnik")
-    if uporabnik and uporabnik in kosarice and 0 <= index < len(kosarice[uporabnik]):
-        del kosarice[uporabnik][index]
-        shrani_kosarico(uporabnik)
+    uporabnik_ime = request.get_cookie("trenutni_uporabnik")
+    if uporabnik_ime:
+        stranka = Stranka.najdi_po_imenu(uporabnik_ime)
+        if stranka:
+            stranka.odstrani_iz_kosarice(index)
+            stranka.posodobi_csv()  # <-- posodobi CSV po spremembi košarice
     return redirect('/kosarica')
 
 

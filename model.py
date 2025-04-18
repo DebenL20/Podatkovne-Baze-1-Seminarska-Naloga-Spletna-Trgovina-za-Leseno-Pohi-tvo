@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 DB_NAME = "pohistvo.sqlite"
-
+CSV_UPORABNIKI = "uporabniki.csv"
 @dataclass
 class Izdelek:
     id: Optional[int]
@@ -77,6 +77,7 @@ class Stranka:
     id: Optional[int]
     ime: str
     geslo: str
+    kosarica: list  # seznam ID-jev izdelkov kot int
 
     @staticmethod
     def ustvari_tabelo():
@@ -85,33 +86,72 @@ class Stranka:
                 CREATE TABLE IF NOT EXISTS stranke (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     ime TEXT UNIQUE NOT NULL,
-                    geslo TEXT NOT NULL
+                    geslo TEXT NOT NULL,
+                    kosarica TEXT DEFAULT ''
                 )
             ''')
 
     def shrani(self):
         with sqlite3.connect(DB_NAME) as conn:
+            kosarica_csv = ",".join(str(i) for i in self.kosarica)
             if self.id is None:
                 cursor = conn.execute('''
-                    INSERT INTO stranke (ime, geslo)
-                    VALUES (?, ?)
-                ''', (self.ime, self.geslo))
+                    INSERT INTO stranke (ime, geslo, kosarica)
+                    VALUES (?, ?, ?)
+                ''', (self.ime, self.geslo, kosarica_csv))
                 self.id = cursor.lastrowid
             else:
                 conn.execute('''
                     UPDATE stranke
-                    SET ime = ?, geslo = ?
+                    SET ime = ?, geslo = ?, kosarica = ?
                     WHERE id = ?
-                ''', (self.ime, self.geslo, self.id))
+                ''', (self.ime, self.geslo, kosarica_csv, self.id))
 
     @classmethod
     def najdi_po_imenu(cls, ime):
         with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.execute("SELECT id, ime, geslo FROM stranke WHERE ime = ?", (ime,))
+            cursor = conn.execute("SELECT id, ime, geslo, kosarica FROM stranke WHERE ime = ?", (ime,))
             rezultat = cursor.fetchone()
             if rezultat:
-                return cls(*rezultat)
+                id, ime, geslo, kosarica_csv = rezultat
+                if kosarica_csv.strip():
+                    kosarica = [int(i) for i in kosarica_csv.split(",")]
+                else:
+                    kosarica = []
+                return cls(id, ime, geslo, kosarica)
             return None
+
+    def dodaj_v_kosarico(self, izdelek_id):
+        self.kosarica.append(izdelek_id)
+        self.shrani()
+
+    def odstrani_iz_kosarice(self, index):
+        if 0 <= index < len(self.kosarica):
+            self.kosarica.pop(index)
+            self.shrani()
+
+    def pridobi_kosarico(self):
+        return [Izdelek.najdi_po_id(iz_id) for iz_id in self.kosarica if Izdelek.najdi_po_id(iz_id) is not None]
+
+    def posodobi_csv(self):
+        uporabniki = {}
+        try:
+            with open(CSV_UPORABNIKI, mode='r', newline='', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                for vrstica in reader:
+                    if len(vrstica) > 1:
+                        uporabniki[vrstica[0]] = [vrstica[1]] + vrstica[2:]
+        except FileNotFoundError:
+            pass
+
+        kosarica_ids = [str(i) for i in self.kosarica]
+        uporabniki[self.ime] = [self.geslo] + kosarica_ids
+
+        with open(CSV_UPORABNIKI, mode='w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            for uporabnik, podatki in uporabniki.items():
+                writer.writerow([uporabnik] + podatki)
+
 
 
 
@@ -212,7 +252,21 @@ def uvozi_podatke(ime_datoteke):
         conn.commit()
 
 
-
+def uvozi_stranke(ime_datoteke):
+    """
+    Prebere uporabnike iz CSV datoteke in jih shrani v tabelo stranke.
+    Format CSV:
+    ime,geslo[,izdelek_id1,izdelek_id2,...]
+    """
+    with open(ime_datoteke, newline='', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        for vrstica in reader:
+            if len(vrstica) >= 2:
+                ime = vrstica[0]
+                geslo = vrstica[1]
+                kosarica = [int(i) for i in vrstica[2:]] if len(vrstica) > 2 else []
+                stranka = Stranka(id=None, ime=ime, geslo=geslo, kosarica=kosarica)
+                stranka.shrani()
 
 
 
@@ -222,5 +276,7 @@ if __name__ == "__main__":
     
     # Uvozi podatke iz CSV
     uvozi_podatke("podatki.csv")
+    # Uvozi stranke
+    uvozi_stranke("uporabniki.csv")
 
     print("Baza je bila uspešno napolnjena s podatki.")
