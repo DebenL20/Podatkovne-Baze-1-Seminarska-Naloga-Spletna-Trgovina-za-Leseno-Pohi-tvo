@@ -5,7 +5,7 @@ import csv
 
 app = Bottle()
 
-kosarice = {}  # Shramba za košarice uporabnikov v pomnilniku
+
 CSV_UPORABNIKI = "uporabniki.csv"
 
 @app.route('/')
@@ -113,45 +113,10 @@ def prikazi_dobavitelja(dobavitelj_id, izdelek_id):
     """, dobavitelj=dobavitelj, izdelek=izdelek)
 
 
-# Funkcija za shranjevanje košarice v CSV
-def shrani_kosarico(uporabnisko_ime):
-    uporabniki = {}
-    try:
-        with open(CSV_UPORABNIKI, mode='r', newline='', encoding='utf-8') as f:
-            reader = csv.reader(f)
-            for vrstica in reader:
-                if len(vrstica) > 1:
-                    uporabniki[vrstica[0]] = [vrstica[1]] + vrstica[2:]  # Geslo + izdelki
-    except FileNotFoundError:
-        pass
-
-    if uporabnisko_ime in uporabniki:
-        geslo = uporabniki[uporabnisko_ime][0]  # Ohrani geslo
-    else:
-        geslo = ""
-
-    # Preprečimo gnezdenje seznamov
-    izdelki = [str(izdelek.id) for izdelek in kosarice.get(uporabnisko_ime, [])]
-    uporabniki[uporabnisko_ime] = [geslo] + izdelki
-
-    with open(CSV_UPORABNIKI, mode='w', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
-        for uporabnik, podatki in uporabniki.items():
-            writer.writerow([uporabnik] + podatki)
 
 
-def nalozi_kosarico(uporabnisko_ime):
-    kosarice[uporabnisko_ime] = []
-    try:
-        with open(CSV_UPORABNIKI, mode='r', newline='', encoding='utf-8') as f:
-            reader = csv.reader(f)
-            for vrstica in reader:
-                if len(vrstica) > 2 and vrstica[0] == uporabnisko_ime:
-                    izdelek_ids = vrstica[2:]  # ID-ji izdelkov v kosarici
-                    izdelki = [Izdelek.najdi_po_id(int(id)) for id in izdelek_ids if id.isdigit()]
-                    kosarice[uporabnisko_ime] = [izdelek for izdelek in izdelki if izdelek is not None]
-    except FileNotFoundError:
-        pass
+
+
 
 
 
@@ -181,7 +146,7 @@ def dodaj_v_kosarico(izdelek_id):
     izdelek = Izdelek.najdi_po_id(izdelek_id)
     if izdelek:
         stranka.dodaj_v_kosarico(izdelek.id)
-        stranka.posodobi_csv()  # <-- tukaj shrani spremembo v CSV
+        
 
     return redirect('/kosarica')
 
@@ -254,7 +219,7 @@ def izbrisi_izdelek(index):
         stranka = Stranka.najdi_po_imenu(uporabnik_ime)
         if stranka:
             stranka.odstrani_iz_kosarice(index)
-            stranka.posodobi_csv()  # <-- posodobi CSV po spremembi košarice
+            
     return redirect('/kosarica')
 
 
@@ -292,7 +257,6 @@ def prijava():
         uporabniki = preberi_uporabnike()
         if uporabnisko_ime in uporabniki and uporabniki[uporabnisko_ime] == geslo:
             response.set_cookie("trenutni_uporabnik", uporabnisko_ime, path='/')
-            nalozi_kosarico(uporabnisko_ime)
             redirect('/izdelki')
         else:
             return "<h1>Nepravilno uporabniško ime ali geslo!</h1><a href='/prijava'>Poskusi znova</a>"
@@ -309,7 +273,7 @@ def prijava():
             <main class="form-container">
                 <form method="POST">
                     <label>Uporabniško ime:</label>
-                    <input type="text" name="uporabnisko_ime" required><br>
+                    <input type="text" name="uporabnisko_ime" autocomplete="off" required>
                     <label>Geslo:</label>
                     <input type="password" name="geslo" required><br>
                     <button type="submit">Prijava</button>
@@ -336,7 +300,7 @@ def registracija():
             return "<h1>Napaka: Uporabniško ime že obstaja!</h1><a href='/registracija'>Poskusi znova</a>"
 
         # Shrani v bazo
-        stranka = Stranka(None, uporabnisko_ime, geslo)
+        stranka = Stranka(None, uporabnisko_ime, geslo, [])
         stranka.shrani()
 
         # Shrani tudi v CSV
@@ -357,7 +321,7 @@ def registracija():
             <main class="form-container">
                 <form method="POST">
                     <label>Uporabniško ime:</label>
-                    <input type="text" name="uporabnisko_ime" required><br>
+                    <input type="text" name="uporabnisko_ime" autocomplete="off" required>
                     <label>Geslo:</label>
                     <input type="password" name="geslo" required><br>
                     <label>Ponovi geslo:</label>
@@ -375,7 +339,9 @@ def registracija():
 def odjava():
     uporabnik = request.get_cookie("trenutni_uporabnik")
     if uporabnik:
-        shrani_kosarico(uporabnik)
+        stranka = Stranka.najdi_po_imenu(uporabnik)
+        if stranka:
+            stranka.shrani_kosarico()
     response.delete_cookie("trenutni_uporabnik")
     redirect('/izdelki')
 

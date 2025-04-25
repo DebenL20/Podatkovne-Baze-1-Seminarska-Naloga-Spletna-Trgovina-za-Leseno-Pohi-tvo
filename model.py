@@ -151,52 +151,34 @@ class Stranka:
             writer = csv.writer(f)
             for uporabnik, podatki in uporabniki.items():
                 writer.writerow([uporabnik] + podatki)
-
-
-
-
-@dataclass
-class Narocilo:
-    id: Optional[int]
-    datum: str
-    vrednost: float
-    status: str
-    stranka_id: int
-
-    @staticmethod
-    def ustvari_tabelo():
+    
+    def shrani_kosarico(self):
         with sqlite3.connect(DB_NAME) as conn:
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS narocila (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    datum TEXT NOT NULL,
-                    vrednost REAL NOT NULL,
-                    status TEXT NOT NULL,
-                    stranka_id INTEGER NOT NULL,
-                    FOREIGN KEY(stranka_id) REFERENCES stranke(id)
+            conn.execute("DELETE FROM kosarice WHERE stranka_id = ?", (self.id,))
+            for izdelek_id in self.kosarica:
+                conn.execute(
+                    "INSERT INTO kosarice (stranka_id, izdelek_id) VALUES (?, ?)",
+                    (self.id, izdelek_id)
                 )
-            ''')
 
-    def shrani(self):
+    def nalozi_kosarico(self):
+        self.kosarica = []
         with sqlite3.connect(DB_NAME) as conn:
-            if self.id is None:
-                cursor = conn.execute('''
-                    INSERT INTO narocila (datum, vrednost, status, stranka_id)
-                    VALUES (?, ?, ?, ?)
-                ''', (self.datum, self.vrednost, self.status, self.stranka_id))
-                self.id = cursor.lastrowid
-            else:
-                conn.execute('''
-                    UPDATE narocila
-                    SET datum = ?, vrednost = ?, status = ?, stranka_id = ?
-                    WHERE id = ?
-                ''', (self.datum, self.vrednost, self.status, self.stranka_id, self.id))
+            cursor = conn.execute(
+                "SELECT izdelek_id FROM kosarice WHERE stranka_id = ?", (self.id,)
+            )
+            self.kosarica = [row[0] for row in cursor.fetchall()]
+
+
+
+
+
 
 def ustvari_bazo():
     Izdelek.ustvari_tabelo()
     Dobavitelj.ustvari_tabelo()
     Stranka.ustvari_tabelo()
-    Narocilo.ustvari_tabelo()
+    
 
 def pobrisi_bazo():
     with sqlite3.connect(DB_NAME) as conn:
