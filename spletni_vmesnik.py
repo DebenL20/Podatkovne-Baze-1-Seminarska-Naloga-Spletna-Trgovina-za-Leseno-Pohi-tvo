@@ -203,6 +203,9 @@ def prikazi_kosarico():
                         % end
                     </ul>
                     <p><strong>Skupna cena:</strong> {{ skupna_cena }} €</p>
+                    <form action="/zakljucek" method="post">
+                        <button type="submit">Zaključi nakup</button>
+                    </form>
                 % else:
                     <p>Košarica je prazna.</p>
                 % end
@@ -345,6 +348,37 @@ def odjava():
     response.delete_cookie("trenutni_uporabnik")
     redirect('/izdelki')
 
+@app.route('/zakljucek', method='POST')
+def zakljucek_nakupa():
+    uporabnik_ime = request.get_cookie("trenutni_uporabnik")
+    if not uporabnik_ime:
+        return redirect('/prijava')
+
+    stranka = Stranka.najdi_po_imenu(uporabnik_ime)
+    if not stranka:
+        return redirect('/prijava')
+
+    # Po potrditvi nakupa izprazni košarico
+    stranka.kosarica = []
+    stranka.shrani_kosarico()
+
+    return template("""
+        <!DOCTYPE html>
+        <html lang="sl">
+        <head>
+            <meta charset="UTF-8">
+            <title>Zaključen nakup</title>
+            <link rel="stylesheet" href="/static/style.css">
+        </head>
+        <body>
+            <header><h1>Hvala za vaš nakup!</h1></header>
+            <main>
+                <p>Vaše naročilo je bilo uspešno zaključeno.</p>
+                <a href="/izdelki"><button>Nazaj v trgovino</button></a>
+            </main>
+        </body>
+        </html>
+    """)
 
 if __name__ == "__main__":
     run(app, host='localhost', port=8080, debug=True)

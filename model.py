@@ -77,7 +77,7 @@ class Stranka:
     id: Optional[int]
     ime: str
     geslo: str
-    kosarica: list  # seznam ID-jev izdelkov kot int
+    kosarica: List[int]  # seznam ID-jev izdelkov
 
     @staticmethod
     def ustvari_tabelo():
@@ -86,72 +86,61 @@ class Stranka:
                 CREATE TABLE IF NOT EXISTS stranke (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     ime TEXT UNIQUE NOT NULL,
-                    geslo TEXT NOT NULL,
-                    kosarica TEXT DEFAULT ''
+                    geslo TEXT NOT NULL
+                )
+            ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS kosarice (
+                    stranka_id INTEGER,
+                    izdelek_id INTEGER,
+                    FOREIGN KEY(stranka_id) REFERENCES stranke(id)
                 )
             ''')
 
     def shrani(self):
         with sqlite3.connect(DB_NAME) as conn:
-            kosarica_csv = ",".join(str(i) for i in self.kosarica)
             if self.id is None:
                 cursor = conn.execute('''
-                    INSERT INTO stranke (ime, geslo, kosarica)
-                    VALUES (?, ?, ?)
-                ''', (self.ime, self.geslo, kosarica_csv))
+                    INSERT INTO stranke (ime, geslo)
+                    VALUES (?, ?)
+                ''', (self.ime, self.geslo))
                 self.id = cursor.lastrowid
             else:
                 conn.execute('''
                     UPDATE stranke
-                    SET ime = ?, geslo = ?, kosarica = ?
+                    SET ime = ?, geslo = ?
                     WHERE id = ?
-                ''', (self.ime, self.geslo, kosarica_csv, self.id))
+                ''', (self.ime, self.geslo, self.id))
+        # Po shrambi stranke vedno shrani tudi košarico
+        self.shrani_kosarico()
 
     @classmethod
     def najdi_po_imenu(cls, ime):
         with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.execute("SELECT id, ime, geslo, kosarica FROM stranke WHERE ime = ?", (ime,))
+            cursor = conn.execute("SELECT id, ime, geslo FROM stranke WHERE ime = ?", (ime,))
             rezultat = cursor.fetchone()
             if rezultat:
-                id, ime, geslo, kosarica_csv = rezultat
-                if kosarica_csv.strip():
-                    kosarica = [int(i) for i in kosarica_csv.split(",")]
-                else:
-                    kosarica = []
-                return cls(id, ime, geslo, kosarica)
+                id, ime, geslo = rezultat
+                instanca = cls(id, ime, geslo, [])
+                instanca.nalozi_kosarico()
+                return instanca
             return None
 
     def dodaj_v_kosarico(self, izdelek_id):
         self.kosarica.append(izdelek_id)
-        self.shrani()
+        self.shrani_kosarico()
+        self.posodobi_csv()
 
     def odstrani_iz_kosarice(self, index):
         if 0 <= index < len(self.kosarica):
             self.kosarica.pop(index)
-            self.shrani()
+            self.shrani_kosarico()
+            self.posodobi_csv()
 
     def pridobi_kosarico(self):
-        return [Izdelek.najdi_po_id(iz_id) for iz_id in self.kosarica if Izdelek.najdi_po_id(iz_id) is not None]
+        from model import Izdelek  # da se prepreči krožno uvažanje
+        return [Izdelek.najdi_po_id(i) for i in self.kosarica if Izdelek.najdi_po_id(i)]
 
-    def posodobi_csv(self):
-        uporabniki = {}
-        try:
-            with open(CSV_UPORABNIKI, mode='r', newline='', encoding='utf-8') as f:
-                reader = csv.reader(f)
-                for vrstica in reader:
-                    if len(vrstica) > 1:
-                        uporabniki[vrstica[0]] = [vrstica[1]] + vrstica[2:]
-        except FileNotFoundError:
-            pass
-
-        kosarica_ids = [str(i) for i in self.kosarica]
-        uporabniki[self.ime] = [self.geslo] + kosarica_ids
-
-        with open(CSV_UPORABNIKI, mode='w', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            for uporabnik, podatki in uporabniki.items():
-                writer.writerow([uporabnik] + podatki)
-    
     def shrani_kosarico(self):
         with sqlite3.connect(DB_NAME) as conn:
             conn.execute("DELETE FROM kosarice WHERE stranka_id = ?", (self.id,))
@@ -169,8 +158,23 @@ class Stranka:
             )
             self.kosarica = [row[0] for row in cursor.fetchall()]
 
+    def posodobi_csv(self):
+        uporabniki = {}
+        try:
+            with open(CSV_UPORABNIKI, mode='r', newline='', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                for vrstica in reader:
+                    if len(vrstica) >= 2:
+                        uporabniki[vrstica[0]] = [vrstica[1]] + vrstica[2:]
+        except FileNotFoundError:
+            pass
 
+        uporabniki[self.ime] = [self.geslo] + [str(i) for i in self.kosarica]
 
+        with open(CSV_UPORABNIKI, mode='w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            for uporabnik, podatki in uporabniki.items():
+                writer.writerow([uporabnik] + podatki)
 
 
 
