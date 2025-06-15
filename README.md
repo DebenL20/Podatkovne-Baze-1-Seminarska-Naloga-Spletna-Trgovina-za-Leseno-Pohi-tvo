@@ -1,13 +1,64 @@
 # Podatkovne-Baze-1-Seminarska-Naloga-Spletna-Trgovina-za-Leseno-Pohistvo
 Podatkovne Baze 1 Seminarska Naloga: Spletna Trgovina za Leseno Pohištvo
 
-Najina seminsrska naloga je spletna trgovina za leseno pohištvo. V sql bi imela pet tabel. Ena bi bila dobavitelji, 
-ki bi imela elemente id, ki je glavni ključ, ime_dobavitelja, telefonska_številka in naslov. Druga tabela bi bila Izdelki. 
-Glavni ključ je id_izdelka, tuji klkuč id_dobavitelja, cena, ime_izdelka, opis, zaloga. Potem bi imela tabelo stranke, 
-kjer bi bil glavni ključ id_stranke, ostale vrstice pa ime, naslov, telefonska številka in email. 
-Četrta tabela bi bila Naročila, ki bi imela glavni ključ id_naročila, ostale vrstice so datum, vrednost in status. 
-Zadnja tabela bi bila postavke naročila, kjer bi imela zunanja ključa id izdelka in id naročila. Ostali vrstici pa količina in cena za kos.
+To je preprosta spletna aplikacija za upravljanje spletne trgovine s pohištvom, kjer lahko uporabniki:
+- brskajo po izdelkih,
+- dodajajo izdelke v košarico,
+- se registrirajo in prijavijo,
+- upravljajo svojo košarico.
 
-Izdelki in dobavitelji bi bili povezani med seboj. En dobavitelj lahko uvozi več različnih izdelkov, zato bi bila relacija dobavlja 1:n.
-Stranke in Naročila bi bili povezani med seboj in ena stranka lahko opravi več naročil, tako, da je relacija med njima odda 1:n.
-Naročila so povezana s Psotavkami naročila v relaciji vsebuje. Eno naročilo ima lahko več postavk, tako, da bi bila povezava vsebuje 1:n.
+Aplikacija uporablja Python, Bottle spletni okvir in SQLite bazo podatkov.
+
+---
+
+## 📁 Struktura projekta
+
+- `main.py` – inicializira bazo in zažene spletni strežnik.
+- `Model.py` – vsebuje definicije razredov in funkcije za delo z bazo.
+- `spletni_vmesnik.py` – vsebuje spletni vmesnik (rute, HTML predloge).
+- `podatki.csv` – začetni podatki o izdelkih in dobaviteljih.
+- `uporabniki.csv` – začetni podatki o uporabnikih.
+
+---
+
+## 🗃️ Struktura SQL tabel
+
+### `izdelki`
+| Stolpec         | Tip     | Opis                         |
+|------------------|----------|------------------------------|
+| `id`             | INTEGER | Primarni ključ               |
+| `ime`            | TEXT    | Ime izdelka                  |
+| `opis`           | TEXT    | Opis izdelka                 |
+| `cena`           | REAL    | Cena izdelka                 |
+| `zaloga`         | INTEGER | Količina na zalogi           |
+| `dobavitelj_id`  | INTEGER | Tuji ključ na `dobavitelji`  |
+
+### `dobavitelji`
+| Stolpec              | Tip     | Opis              |
+|-----------------------|----------|-------------------|
+| `id`                  | INTEGER | Primarni ključ    |
+| `ime`                 | TEXT    | Ime dobavitelja   |
+| `naslov`              | TEXT    | Naslov            |
+| `telefonska_stevilka` | TEXT    | Telefonska številka |
+
+### `stranke`
+| Stolpec   | Tip     | Opis                        |
+|------------|----------|-----------------------------|
+| `id`       | INTEGER | Primarni ključ              |
+| `ime`      | TEXT    | Uporabniško ime (unikatno)  |
+| `geslo`    | TEXT    | Geslo (trenutno v tekstovni obliki) |
+
+### `kosarice`
+| Stolpec      | Tip     | Opis                                 |
+|---------------|----------|----------------------------------------|
+| `stranka_id`  | INTEGER | Tuji ključ na `stranke`               |
+| `izdelek_id`  | INTEGER | Tuji ključ na `izdelki`               |
+
+---
+
+## 🚀 Zagon aplikacije
+
+1. Prepričaj se, da imaš nameščen Python 3.
+2. Poženi main.py
+
+
