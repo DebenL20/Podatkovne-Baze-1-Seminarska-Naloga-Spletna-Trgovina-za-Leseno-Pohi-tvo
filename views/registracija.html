@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <title>Registracija</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header><h1>Registracija</h1></header>
+    <main class="form-container">
+        <form method="POST">
+            <label>Uporabniško ime:</label>
+            <input type="text" name="uporabnisko_ime" autocomplete="off" required>
+            <label>Geslo:</label>
+            <input type="password" name="geslo" required><br>
+            <label>Ponovi geslo:</label>
+            <input type="password" name="potrdi_geslo" required><br>
+            <button type="submit">Registracija</button>
+        </form>
+        <a href="/prijava">Nazaj na prijavo</a>
+    </main>
+</body>
+</html>

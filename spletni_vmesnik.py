@@ -10,66 +10,18 @@ CSV_UPORABNIKI = "uporabniki.csv"
 
 @app.route('/')
 def zacetna_stran():
-    return template("""
-        <!DOCTYPE html>
-        <html lang="sl">
-        <head>
-            <meta charset="UTF-8">
-            <title>Pohištvo</title>
-            <link rel="stylesheet" href="/static/style.css">
-        </head>
-        <body>
-            <header>
-                <h1>Dobrodošli v spletni trgovini s pohištvom</h1>
-                <nav>
-                    <a href="/izdelki">Pregled izdelkov</a>
-                </nav>
-            </header>
-        </body>
-        </html>
-    """)
+    return template("Začetna_stran.html")
 
 @app.route('/izdelki')
 def prikazi_izdelke():
     uporabnik = request.get_cookie("trenutni_uporabnik")
     izdelki = Izdelek.vsi_izdelki()
-    return template("""
-        <!DOCTYPE html>
-        <html lang="sl">
-        <head>
-            <meta charset="UTF-8">
-            <title>Izdelki</title>
-            <link rel="stylesheet" href="/static/style.css">
-        </head>
-        <body>
-            <header>
-                <h1>Seznam izdelkov</h1>
-                <div class="top-nav">
-                    <a href="/kosarica">🛒 Košarica</a>
-                    % if uporabnik:
-                        <a href="/odjava">Odjava ({{uporabnik}})</a>
-                    % else:
-                        <a href="/prijava">Prijava</a>
-                    % end
-                </div>
-            </header>
-            <main class="product-grid">
-                % for izdelek in izdelki:
-                    <div class="product">
-                        <a href="/dobavitelj/{{izdelek.dobavitelj_id}}/{{izdelek.id}}">
-                            <img class="product-img" src="/slike_izdelkov/{{izdelek.ime.lower().replace(' ', '_')}}.png" alt="{{izdelek.ime}}">
-                        </a>
-                        <h2>{{ izdelek.ime }}</h2>
-                        <p>{{ izdelek.cena }} €</p>
-                    </div>
-                % end
-            </main>
-            <footer>
-                <a href="/">Na začetno stran</a>
-            </footer>
-        </body>
-        </html>
-    """, izdelki=izdelki, uporabnik=uporabnik)
+    sort = request.query.get('sort')
+    if sort == 'asc':
+        izdelki.sort(key=lambda x: x.cena)
+    elif sort == 'desc':
+        izdelki.sort(key=lambda x: x.cena, reverse=True)
+    return template("Seznam_izdelkov.html", izdelki=izdelki, uporabnik=uporabnik)
 
 # Strezba statične CSS datoteke
 @app.route('/static/<filename>')
@@ -82,62 +34,14 @@ def serve_static(filename):
 def prikazi_dobavitelja(dobavitelj_id, izdelek_id):
     dobavitelj = Dobavitelj.najdi_po_id(dobavitelj_id)
     izdelek = Izdelek.najdi_po_id(izdelek_id)
-    return template("""
-        <!DOCTYPE html>
-        <html lang="sl">
-        <head>
-            <meta charset="UTF-8">
-            <title>Dobavitelj</title>
-            <link rel="stylesheet" href="/static/style.css">
-        </head>
-        <body>
-            <header><h1>Dobavitelj izdelka</h1></header>
-            <main class="detail-view">
-                <h2>{{ izdelek.ime }}</h2>
-                <p><strong>Opis:</strong> {{ izdelek.opis }}</p>
-                <p><strong>Cena:</strong> {{ izdelek.cena }} €</p>
-                <hr>
-                <h3>Dobavitelj</h3>
-                <p><strong>Ime:</strong> {{ dobavitelj.ime }}</p>
-                <p><strong>Naslov:</strong> {{ dobavitelj.naslov }}</p>
-                <p><strong>Telefon:</strong> {{ dobavitelj.telefonska_stevilka }}</p>
-                <form action="/dodaj_v_kosarico/{{ izdelek.id }}" method="post">
-                    <button type="submit">Dodaj v košarico</button>
-                </form>
-            </main>
-            <footer>
-                <a href="/izdelki">Nazaj na izdelke</a>
-            </footer>
-        </body>
-        </html>
-    """, dobavitelj=dobavitelj, izdelek=izdelek)
-
-
-
-
-
-
-
+    return template("Dobavitelj_izdelka.html", dobavitelj=dobavitelj, izdelek=izdelek)
 
 
 @app.route('/dodaj_v_kosarico/<izdelek_id>', method='POST')
 def dodaj_v_kosarico(izdelek_id):
     uporabnik_ime = request.get_cookie("trenutni_uporabnik")
     if not uporabnik_ime:
-        return template("""
-            <!DOCTYPE html>
-            <html lang="sl">
-            <head>
-                <meta charset="UTF-8">
-                <title>Prijava potrebna</title>
-            </head>
-            <body>
-                <h1>Prosim prijavite se v račun, da lahko dodajate izdelke v košarico.</h1>
-                <a href="/prijava"><button>Prijava</button></a>
-                <a href="/izdelki"><button>Nazaj na izdelke</button></a>
-            </body>
-            </html>
-        """)
+        return template("Obvestilo_o_prijavi.html")
 
     stranka = Stranka.najdi_po_imenu(uporabnik_ime)
     if not stranka:
@@ -157,21 +61,7 @@ def dodaj_v_kosarico(izdelek_id):
 def prikazi_kosarico():
     uporabnik_ime = request.get_cookie("trenutni_uporabnik")
     if not uporabnik_ime:
-        return template("""
-            <!DOCTYPE html>
-            <html lang="sl">
-            <head>
-                <meta charset="UTF-8">
-                <title>Košarica</title>
-                <link rel="stylesheet" href="/static/style.css">
-            </head>
-            <body>
-                <h1>Prosim prijavite se, da lahko vidite svojo košarico.</h1>
-                <a href="/prijava"><button>Prijava</button></a>
-                <a href="/izdelki"><button>Nazaj na izdelke</button></a>
-            </body>
-            </html>
-        """)
+        return template("Obvestilo_o_prijavi.html")
 
     stranka = Stranka.najdi_po_imenu(uporabnik_ime)
     if not stranka:
@@ -180,40 +70,7 @@ def prikazi_kosarico():
     izdelki = stranka.pridobi_kosarico()
     skupna_cena = sum(izdelek.cena for izdelek in izdelki)
 
-    return template("""
-        <!DOCTYPE html>
-        <html lang="sl">
-        <head>
-            <meta charset="UTF-8">
-            <title>Košarica</title>
-            <link rel="stylesheet" href="/static/style.css">
-        </head>
-        <body>
-            <header><h1>Vaša košarica</h1></header>
-            <main class="cart-view">
-                % if izdelki:
-                    <ul>
-                        % for i, izdelek in enumerate(izdelki):
-                            <li>
-                                {{ izdelek.ime }} - {{ izdelek.cena }} €
-                                <form action="/izbrisi/{{i}}" method="post" style="display:inline;">
-                                    <button type="submit">Odstrani</button>
-                                </form>
-                            </li>
-                        % end
-                    </ul>
-                    <p><strong>Skupna cena:</strong> {{ skupna_cena }} €</p>
-                    <form action="/zakljucek" method="post">
-                        <button type="submit">Zaključi nakup</button>
-                    </form>
-                % else:
-                    <p>Košarica je prazna.</p>
-                % end
-                <a href="/izdelki"><button>Nazaj na izdelke</button></a>
-            </main>
-        </body>
-        </html>
-    """, izdelki=izdelki, skupna_cena=skupna_cena)
+    return template("Košarica.html", izdelki=izdelki, skupna_cena=skupna_cena)
 
 @app.route('/izbrisi/<index:int>', method="POST")
 def izbrisi_izdelek(index):
@@ -263,29 +120,7 @@ def prijava():
             redirect('/izdelki')
         else:
             return "<h1>Nepravilno uporabniško ime ali geslo!</h1><a href='/prijava'>Poskusi znova</a>"
-    return template("""
-        <!DOCTYPE html>
-        <html lang="sl">
-        <head>
-            <meta charset="UTF-8">
-            <title>Prijava</title>
-            <link rel="stylesheet" href="/static/style.css">
-        </head>
-        <body>
-            <header><h1>Prijava</h1></header>
-            <main class="form-container">
-                <form method="POST">
-                    <label>Uporabniško ime:</label>
-                    <input type="text" name="uporabnisko_ime" autocomplete="off" required>
-                    <label>Geslo:</label>
-                    <input type="password" name="geslo" required><br>
-                    <button type="submit">Prijava</button>
-                </form>
-                <a href="/registracija">Registracija</a>
-            </main>
-        </body>
-        </html>
-    """)
+    return template("prijava.html")
 
 
 @app.route('/registracija', method=['GET', 'POST'])
@@ -311,31 +146,7 @@ def registracija():
 
         return "<h1>Uspešna registracija!</h1><a href='/prijava'>Prijava</a>"
 
-    return template("""
-        <!DOCTYPE html>
-        <html lang="sl">
-        <head>
-            <meta charset="UTF-8">
-            <title>Registracija</title>
-            <link rel="stylesheet" href="/static/style.css">
-        </head>
-        <body>
-            <header><h1>Registracija</h1></header>
-            <main class="form-container">
-                <form method="POST">
-                    <label>Uporabniško ime:</label>
-                    <input type="text" name="uporabnisko_ime" autocomplete="off" required>
-                    <label>Geslo:</label>
-                    <input type="password" name="geslo" required><br>
-                    <label>Ponovi geslo:</label>
-                    <input type="password" name="potrdi_geslo" required><br>
-                    <button type="submit">Registracija</button>
-                </form>
-                <a href="/prijava">Nazaj na prijavo</a>
-            </main>
-        </body>
-        </html>
-    """)
+    return template("registracija.html")
 
 
 @app.route('/odjava')
@@ -362,23 +173,7 @@ def zakljucek_nakupa():
     stranka.kosarica = []
     stranka.shrani_kosarico()
 
-    return template("""
-        <!DOCTYPE html>
-        <html lang="sl">
-        <head>
-            <meta charset="UTF-8">
-            <title>Zaključen nakup</title>
-            <link rel="stylesheet" href="/static/style.css">
-        </head>
-        <body>
-            <header><h1>Hvala za vaš nakup!</h1></header>
-            <main>
-                <p>Vaše naročilo je bilo uspešno zaključeno.</p>
-                <a href="/izdelki"><button>Nazaj v trgovino</button></a>
-            </main>
-        </body>
-        </html>
-    """)
+    return template("Zaključen_nakup.html")
 
 if __name__ == "__main__":
     run(app, host='localhost', port=8080, debug=True)

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+ <meta charset="UTF-8">
+ <title>Dobavitelj</title>
+ <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header><h1>Dobavitelj izdelka</h1></header>
+<main class="detail-view">
+ <h2>{{ izdelek.ime }}</h2>
+ <p><strong>Opis:</strong> {{ izdelek.opis }}</p>
+ <p><strong>Cena:</strong> {{ izdelek.cena }} €</p>
+ <hr>
+ <h3>Dobavitelj</h3>
+ <p><strong>Ime:</strong> {{ dobavitelj.ime }}</p>
+ <p><strong>Naslov:</strong> {{ dobavitelj.naslov }}</p>
+ <p><strong>Telefon:</strong> {{ dobavitelj.telefonska_stevilka }}</p>
+ <form action="/dodaj_v_kosarico/{{ izdelek.id }}" method="post">
+ <button type="submit">Dodaj v košarico</button>
+ </form>
+</main>
+<footer>
+ <a href="/izdelki">Nazaj na izdelke</a>
+</footer>
+</body>
+</html>

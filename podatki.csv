@@ -1,6 +1,16 @@
 izdelek_ime,izdelek_opis,izdelek_cena,izdelek_zaloga,dobavitelj_ime,dobavitelj_naslov,dobavitelj_telefon
-
-Miza,Lesena miza,120.0,10,Lesni Dobavitelj,Ljubljana,040123456
-
-Omara,Velika omara,250.0,5,Lesni Dobavitelj,Ljubljana,040123456
-
+Miza,Lesena jedilna miza za 6 oseb,199.99,12,Lesni Dobavitelj,Ljubljana,040123456
+Omara,Velika garderobna omara z drsnimi vrati,349.5,7,Pohištvo Plus,Maribor,031987654
+Stol,Udoben kuhinjski stol z oblazinjenim sedežem,49.9,30,Sedeži d.o.o.,Celje,041222333
+Postelja,Zakonska postelja 160x200 cm z letvenim dnom,420.0,5,Spalni Raj,Kranj,051444555
+Polica,Stenska polica iz masivnega lesa,29.99,20,Lesni Dobavitelj,Ljubljana,040123456
+Komoda,Komoda s tremi predali in kovinskimi ročaji,159.0,10,Pohištvo Plus,Maribor,031987654
+Pisalna miza,Miza za računalnik z izvlečnim predalom,119.9,8,Pisarniško Pohištvo,Nova Gorica,040777888
+Nočna omarica,Omarica z dvema predaloma za spalnico,45.0,15,Spalni Raj,Kranj,051444555
+Kavč,Trosed z ležiščem in shranjevalnim prostorom,599.99,3,Dnevna Soba d.o.o.,Velenje,031333222
+Vrtni stol,Zložljiv stol za teraso iz umetnega ratana,39.9,25,Zunanje Pohištvo,Koper,040999888
+Barski stol,Visok stol z naslonjalom za kuhinjski otok,69.9,12,Sedeži d.o.o.,Celje,041222333
+TV omarica,Nizka omarica za televizor do 55'',139.0,6,Dnevna Soba d.o.o.,Velenje,031333222
+Kuhinjski regal,Regal z odprtimi policami in omaricami,189.9,4,Pohištvo Plus,Maribor,031987654
+Pisalni stol,Ergonomski stol z nastavljivim naslonjalom,89.9,10,Pisarniško Pohištvo,Nova Gorica,040777888
+Vrtna miza,Miza za vrt iz kovine in stekla,129.9,9,Zunanje Pohištvo,Koper,040999888

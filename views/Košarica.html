@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+ <meta charset="UTF-8">
+ <title>Košarica</title>
+ <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header><h1>Vaša košarica</h1></header>
+<main class="cart-view">
+ % if izdelki:
+ <ul>
+ % for i, izdelek in enumerate(izdelki):
+ <li>
+ {{ izdelek.ime }} - {{ izdelek.cena }} €
+ <form action="/izbrisi/{{i}}" method="post" style="display:inline;">
+ <button type="submit">Odstrani</button>
+ </form>
+ </li>
+ % end
+ </ul>
+ <p><strong>Skupna cena:</strong> {{ skupna_cena }} €</p>
+ <form action="/zakljucek" method="post">
+ <button type="submit">Zaključi nakup</button>
+ </form>
+ % else:
+ <p>Košarica je prazna.</p>
+ % end
+ <a href="/izdelki"><button>Nazaj na izdelke</button></a>
+</main>
+</body>
+</html>

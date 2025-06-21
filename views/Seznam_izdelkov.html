@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+ <meta charset="UTF-8">
+ <title>Izdelki</title>
+ <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+ <h1>Seznam izdelkov</h1>
+ <div class="top-nav">
+ <a href="/kosarica">🛒 Košarica</a>
+ % if uporabnik:
+ <a href="/odjava">Odjava ({{uporabnik}})</a>
+ % else:
+ <a href="/prijava">Prijava</a>
+ % end
+ </div>
+</header>
+
+<!-- 🔽 Filter za razvrščanje po ceni -->
+<form method="get" action="/izdelki" style="margin: 1em;">
+    <label for="sort">Razvrsti po ceni:</label>
+    <select name="sort" onchange="this.form.submit()">
+        <option value="">-- izberi --</option>
+        <option value="asc">Naraščajoče</option>
+        <option value="desc">Padajoče</option>
+    </select>
+</form>
+
+<main class="product-grid">
+ % for izdelek in izdelki:
+ <div class="product">
+ <a href="/dobavitelj/{{izdelek.dobavitelj_id}}/{{izdelek.id}}">
+ <img class="product-img" src="/slike_izdelkov/{{izdelek.ime.lower().replace(' ', '_')}}.png" alt="{{izdelek.ime}}">
+ </a>
+ <h2>{{ izdelek.ime }}</h2>
+ <p>{{ izdelek.cena }} €</p>
+ </div>
+ % end
+</main>
+<footer>
+ <a href="/">Na začetno stran</a>
+</footer>
+</body>
+</html>
